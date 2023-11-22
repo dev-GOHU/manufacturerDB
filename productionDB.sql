@@ -1,0 +1,111 @@
+CREATE TABLE `고객` (
+	`id`	INT(11)	PRIMARY KEY,
+	`기업명`	VARCHAR(60)	NOT NULL,
+	`전화번호`	VARCHAR(20)	NOT NULL,
+	`email`	VARCHAR(320)	NOT NULL,
+	`주소`	VARCHAR(255)	NOT NULL,
+	`FAX`	VARCHAR(50)
+);
+
+CREATE TABLE `제품` (
+	`id`	INT(11)	PRIMARY KEY,
+	`제품명`	VARCHAR(60)	NOT NULL,
+	`원가`	INT	NOT NULL,
+	`정가`	INT	NOT NULL
+);
+
+CREATE TABLE `제조공장` (
+	`id`	INT(11)	PRIMARY KEY,
+	`공장명`	VARCHAR(60)	NOT NULL,
+	`주소`	VARCHAR(255)	NOT NULL,
+	`연락처`	VARCHAR(20)	NOT NULL
+);
+
+CREATE TABLE `원자재` (
+	`id`	INT(11)	PRIMARY KEY,
+	`구분`	TINYINT	NOT NULL,
+	`원자재명`	VARCHAR(60)	NOT NULL,
+	`보관량`	INT	NOT NULL
+);
+
+CREATE TABLE `원자재거래처` (
+	`id`	INT(11)	PRIMARY KEY,
+	`거래처명`	VARCHAR(60)	NOT NULL,
+	`주소`	VARCHAR(255)	NOT NULL,
+	`전화번호`	VARCHAR(20)	NOT NULL
+);
+
+CREATE TABLE `택배업체거래처` (
+	`id`	INT(11)	PRIMARY KEY,
+	`거래처명`	VARCHAR(60)	NOT NULL,
+	`연락처`	VARCHAR(20)	NOT NULL,
+	`분류`	TINYINT	NOT NULL,
+	`택배비용`	INT	NOT NULL
+);
+
+CREATE TABLE `제품별필요원자재` (
+	`제품_id`	INT(11)	NOT NULL,
+	`원자재_id`	INT(11)	NOT NULL,
+	`필요량`	INT	NOT NULL,
+	FOREIGN KEY(`제품_id`) REFERENCES `제품`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`원자재_id`) REFERENCES `원자재`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `직원` (
+	`id`	INT(11) PRIMARY KEY,
+	`제조공장_id`	INT(11)	NOT NULL,
+	`직책`	VARCHAR(60)	NOT NULL,
+	`성`	VARCHAR(35)	NOT NULL,
+	`이름`	VARCHAR(35)	NOT NULL,
+	`생년월일`	DATE	NOT NULL,
+	`집주소`	VARCHAR(255)	NOT NULL,
+	`월급`	INT	NOT NULL,
+	FOREIGN KEY(`제조공장_id`) REFERENCES `제조공장`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `구매로그` (
+	`id`	INT(11)	PRIMARY KEY,
+	`내용`	VARCHAR(255)	NOT NULL,
+	`금액`	INT	NOT NULL,
+	`구매일자`	TIMESTAMP	NOT NULL
+);
+
+CREATE TABLE `원자재구매` (
+	`id`	INT(11)	PRIMARY KEY,
+	`원자재거래처_id`	INT(11)	NOT NULL,
+	`제조공장_id`	INT(11)	NOT NULL,
+	`원자재_id`	INT(11)	NOT NULL,
+	`구매량`	INT	NOT NULL,
+	`유통기한`	DATE	NOT NULL,
+	`상태`	TINYINT	NOT NULL,
+	FOREIGN KEY(`id`) REFERENCES `구매로그`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`원자재거래처_id`) REFERENCES `원자재거래처`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`제조공장_id`) REFERENCES `제조공장`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`원자재_id`) REFERENCES `원자재`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `주문` (
+	`id`	INT(11)	PRIMARY KEY,
+	`고객_id`	INT(11)	NOT NULL,
+	`택배업체거래처_id`	INT(11)	NOT NULL,
+	`제조공장_id`	INT(11)	NULL	DEFAULT NULL,
+	`결제금액`	INT	NOT NULL,
+	`주소`	VARCHAR(255)	NOT NULL,
+	`우편번호`	INT(10)	NOT NULL,
+	`상태`	TINYINT	NOT NULL,
+	`주문일자`	TIMESTAMP	NOT NULL,
+	`제조일자`	TIMESTAMP	NOT NULL,
+	`배송일자`	TIMESTAMP	NOT NULL,
+	`배송완료일자`	TIMESTAMP	NOT NULL,
+	FOREIGN KEY(`고객_id`) REFERENCES `고객`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`택배업체거래처_id`) REFERENCES `택배업체거래처`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`제조공장_id`) REFERENCES `제조공장`(`id`) ON DELETE CASCADE
+);
+
+CREATE TABLE `주문제품` (
+	`주문_id`	INT(11)	NOT NULL,
+	`제품_id`	INT(11)	NOT NULL,
+	`수량`	INT	NOT NULL,
+	FOREIGN KEY(`주문_id`) REFERENCES `주문`(`id`) ON DELETE CASCADE,
+	FOREIGN KEY(`제품_id`) REFERENCES `제품`(`id`) ON DELETE CASCADE
+);
