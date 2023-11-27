@@ -87,7 +87,7 @@ CREATE TABLE `구매로그` (
 ) ENGINE=InnoDB;
 
 CREATE TABLE `원자재구매` (
-	`id`	INT(11)	UNSIGNED ZEROFILL PRIMARY KEY,
+	`id`	INT(11)	UNSIGNED ZEROFILL NOT NULL,
 	`원자재거래처_id`	INT(3)	UNSIGNED ZEROFILL NOT NULL,
 	`원자재_id`	INT(11)	UNSIGNED ZEROFILL NOT NULL,
 	`구매량`	INT	NOT NULL CHECK (`구매량` >= 0),
@@ -206,7 +206,7 @@ BEGIN
 END $$
 
 DELIMITER $$
-CREATE PROCEDURE `order` (
+CREATE PROCEDURE order_product (
 	IN _customer_id INT,
 	IN _parcel_id INT,
 	IN _home_address VARCHAR(255),
@@ -239,7 +239,7 @@ PROC_BODY: BEGIN
 	WHILE i < JSON_LENGTH(_products) DO
 		SET _product_key_i_varchar = JSON_UNQUOTE(JSON_EXTRACT(_products_keys, CONCAT('$[', i, ']')));
 		SET _product_key_i = CAST(_product_key_i_varchar AS SIGNED);
-		SET _product_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_products, _product_key_i)) AS SIGNED);
+		SET _product_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_products, CONCAT('$."', _product_key_i_varchar, '"'))) AS SIGNED);
 		INSERT INTO `주문제품`(`주문_id`, `제품_id`, `수량`) 
 			VALUES (_id, _product_key_i, _product_quantity_i);
 
@@ -285,7 +285,7 @@ PROC_BODY: BEGIN
 	WHILE i < JSON_LENGTH(_materials) DO
 		SET _material_key_i_varchar = JSON_UNQUOTE(JSON_EXTRACT(_materials_keys, CONCAT('$[', i, ']')));
 		SET _material_key_i = CAST(_material_key_i_varchar AS UNSIGNED);
-		SET _material_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_materials, _material_key_i)) AS SIGNED);
+		SET _material_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_materials, CONCAT('$."', _material_key_i_varchar, '"'))) AS SIGNED);
 		INSERT INTO `원자재구매`(`id`, `원자재거래처_id`,`원자재_id`, `구매량`) 
 			VALUES (_id, _vendor_id, _material_key_i, _material_quantity_i);
 
@@ -348,7 +348,7 @@ BEGIN
 	WHILE i < JSON_LENGTH(_materials) DO
 		SET _material_key_i_varchar = JSON_UNQUOTE(JSON_EXTRACT(_materials_keys, CONCAT('$[', i, ']')));
 		SET _material_key_i = CAST(_material_key_i_varchar AS UNSIGNED);
-		SET _material_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_materials, _material_key_i)) AS SIGNED);
+		SET _material_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_materials, CONCAT('$."', _material_key_i_varchar, '"'))) AS SIGNED);
 		
 		IF NOT EXISTS(SELECT * FROM `원자재` WHERE `id`=_material_key_i) THEN
 			ROLLBACK;

@@ -61,5 +61,5 @@ CALL order_materials(1, 1, 12345600, JSON_OBJECT(
 UPDATE `구매로그` SET `상태`=2 WHERE `id`=1;
 
 -- order(customer_id, parcel_id, home_addr, postal_code, products)
-CALL order(1, 1, "서울 송파구 오금동 오금로 4가길 7", 05747, JSON_OBJECT('1', 100));
+CALL order_product(1, 1, "서울 송파구 오금동 오금로 4가길 7", 05747, JSON_OBJECT('1', 100));
 
