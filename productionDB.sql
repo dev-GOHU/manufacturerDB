@@ -122,6 +122,8 @@ CREATE TABLE `주문제품` (
 	FOREIGN KEY(`제품_id`) REFERENCES `제품`(`id`) ON UPDATE CASCADE 
 ) ENGINE=InnoDB;
 
+
+
 DELIMITER $$
 CREATE TRIGGER update_quantity_by_order
 AFTER UPDATE ON `주문`
@@ -318,6 +320,43 @@ PROC_BODY: BEGIN
 		INSERT `원자재보관현황`(`id`, `제조공장_id`)
 			VALUES (_id, _manufacturer_id_i);
 		SET i=i+1;
+	END WHILE;
+	COMMIT;
+END $$
+
+DELIMITER $$
+CREATE PROCEDURE insert_product_info(
+	IN _product_name VARCHAR(60),
+	IN _price INT,
+	IN _materials JSON
+)
+BEGIN
+	DECLARE _id INT;
+	DECLARE i INT DEFAULT 0;
+	DECLARE _materials_keys TEXT;
+	DECLARE _material_key_i_varchar VARCHAR(11);
+	DECLARE _material_key_i INT;
+	DECLARE _material_quantity_i INT;
+
+	START TRANSACTION;
+	INSERT INTO `제품`(`제품명`,`정가`)
+		VALUES (_product_name, _price);
+	SET _id = LAST_INSERT_ID();
+
+	SET _materials_keys = JSON_UNQUOTE(JSON_KEYS(_materials));
+
+	WHILE i < JSON_LENGTH(_materials) DO
+		SET _material_key_i_varchar = JSON_UNQUOTE(JSON_EXTRACT(_materials_keys, CONCAT('$[', i, ']')));
+		SET _material_key_i = CAST(_material_key_i_varchar AS UNSIGNED);
+		SET _material_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_materials, _material_key_i)) AS SIGNED);
+		
+		IF NOT EXISTS(SELECT * FROM `원자재` WHERE `id`=_material_key_i) THEN
+			ROLLBACK;
+		END IF;
+
+		INSERT INTO `제품별필요원자재`(`제품_id`, `원자재_id`, `필요량`)
+			VALUES(_id, _material_key_i, _material_quantity_i);
+		SET i = i+1;
 	END WHILE;
 	COMMIT;
 END $$
