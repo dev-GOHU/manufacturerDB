@@ -1,3 +1,7 @@
+DROP DATABASE test;
+CREATE DATABASE test;
+USE test;
+
 CREATE TABLE `고객` (
 	`id` INT(11) UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
 	`기업명` VARCHAR(60) UNIQUE NOT NULL,
@@ -6,33 +10,34 @@ CREATE TABLE `고객` (
 	`email` VARCHAR(320) NOT NULL,
 	`주소` VARCHAR(255) NOT NULL,
 	`FAX` VARCHAR(50)
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `제품` (
 	`id` INT(11)	UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
 	`제품명` VARCHAR(60) NOT NULL,
 	`정가` INT NOT NULL CHECK (`정가`>=0)
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `제조공장` (
 	`id`	INT(3) UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
 	`공장명`	VARCHAR(60)	NOT NULL,
 	`주소`	VARCHAR(255)	NOT NULL,
 	`연락처`	VARCHAR(20)	NOT NULL
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `원자재` (
 	`id`	INT(11)	UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
-	`구분`	TINYINT	UNSIGNED NOT NULL CHECK (`구분` IN (1,2)),
+	`구분`	TINYINT	UNSIGNED NOT NULL CHECK (`구분` IN (1,2,3)),
+	`원산지` VARCHAR(60),
 	`원자재명`	VARCHAR(60)	NOT NULL
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `원자재거래처` (
 	`id`	INT(3)	UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
 	`거래처명`	VARCHAR(60)	NOT NULL,
 	`주소`	VARCHAR(255)	NOT NULL,
 	`전화번호`	VARCHAR(20)	NOT NULL
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `원자재보관현황` (
 	`id`	INT(11)	UNSIGNED ZEROFILL NOT NULL,
@@ -42,14 +47,14 @@ CREATE TABLE `원자재보관현황` (
 	`보관량`	INT NOT NULL DEFAULT 0 CHECK(`보관량`>=0),
 	FOREIGN KEY (`id`) REFERENCES `원자재`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY (`제조공장_id`) REFERENCES `제조공장`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `택배업체` (
 	`id`	INT(3)	UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
 	`업체명`	VARCHAR(60)	UNIQUE NOT NULL,
 	`연락처`	VARCHAR(20)	NOT NULL,
-	`택배비용`	INT	NOT NULL
-);
+	`택배비용`	INT	NOT NULL -- 1kg 당
+) ENGINE=InnoDB;
 
 CREATE TABLE `제품별필요원자재` (
 	`제품_id`	INT(11)	UNSIGNED ZEROFILL NOT NULL,
@@ -57,7 +62,7 @@ CREATE TABLE `제품별필요원자재` (
 	`필요량`	INT	NOT NULL CHECK (`필요량`>=0),
 	FOREIGN KEY(`제품_id`) REFERENCES `제품`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY(`원자재_id`) REFERENCES `원자재`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `직원` (
 	`id`	INT(11)  UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
@@ -69,17 +74,17 @@ CREATE TABLE `직원` (
 	`집주소`	VARCHAR(255)	NOT NULL,
 	`월급`	INT	NOT NULL DEFAULT 0 CHECK (`월급`>=0),
 	FOREIGN KEY(`제조공장_id`) REFERENCES `제조공장`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `구매로그` (
 	`id`	INT(11)	UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
 	`내용`	TEXT	NOT NULL,
 	`제조공장_id`	INT(3)	UNSIGNED ZEROFILL NOT NULL,
 	`상태`	TINYINT	UNSIGNED NOT NULL DEFAULT 1 CHECK(`상태` >= 1 AND `상태` <= 3),
-	`금액`	BIGINT	NOT NULL,
+	`금액`	BIGINT	NOT NULL DEFAULT 0,
 	`일자`	TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	FOREIGN KEY(`제조공장_id`) REFERENCES `제조공장`(`id`) ON UPDATE CASCADE ON DELETE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `원자재구매` (
 	`id`	INT(11)	UNSIGNED ZEROFILL PRIMARY KEY,
@@ -89,7 +94,7 @@ CREATE TABLE `원자재구매` (
 	FOREIGN KEY(`id`) REFERENCES `구매로그`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY(`원자재거래처_id`) REFERENCES `원자재거래처`(`id`) ON UPDATE CASCADE,
 	FOREIGN KEY(`원자재_id`) REFERENCES `원자재`(`id`) ON UPDATE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `주문` (
 	`id`	INT(11)	UNSIGNED ZEROFILL PRIMARY KEY AUTO_INCREMENT,
@@ -107,7 +112,7 @@ CREATE TABLE `주문` (
 	FOREIGN KEY(`고객_id`) REFERENCES `고객`(`id`) ON UPDATE CASCADE,
 	FOREIGN KEY(`택배업체_id`) REFERENCES `택배업체`(`id`) ON UPDATE CASCADE,
 	FOREIGN KEY(`제조공장_id`) REFERENCES `제조공장`(`id`) ON UPDATE CASCADE
-);
+) ENGINE=InnoDB;
 
 CREATE TABLE `주문제품` (
 	`주문_id`	INT(11)	UNSIGNED ZEROFILL NOT NULL,
@@ -115,7 +120,7 @@ CREATE TABLE `주문제품` (
 	`수량`	INT	NOT NULL CHECK (`수량` >= 0 ),
 	FOREIGN KEY(`주문_id`) REFERENCES `주문`(`id`) ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY(`제품_id`) REFERENCES `제품`(`id`) ON UPDATE CASCADE 
-);
+) ENGINE=InnoDB;
 
 DELIMITER $$
 CREATE TRIGGER update_quantity_by_order
@@ -167,10 +172,7 @@ CREATE TRIGGER update_quantity_by_order_materials
 	AFTER INSERT ON `원자재구매`
 	FOR EACH ROW
 BEGIN
-	-- 변수 선언
 	DECLARE stat TINYINT;
-	
-	-- 상태 조회
 	SELECT `상태` INTO stat FROM `구매로그` WHERE `id` = NEW.`id`;
 
 	-- 상태가 1이면 보관량 업데이트
@@ -202,7 +204,7 @@ BEGIN
 END $$
 
 DELIMITER $$
-CREATE PROCEDURE `ORDER` (
+CREATE PROCEDURE `order` (
 	IN _customer_id INT,
 	IN _parcel_id INT,
 	IN _home_address VARCHAR(255),
@@ -219,12 +221,11 @@ PROC_BODY: BEGIN
 	DECLARE _product_quantity_i INT;
 	DECLARE price_temp INT;
 
-	IF NOT EXISTS(SELECT `id` FROM `고객` WHERE `id`=_customer_id)
-		OR NOT EXISTS(SELECT `id` FROM `택배업체` WHERE `id`=_parcel_id) THEN
+	IF NOT EXISTS(SELECT * FROM `고객` WHERE `id`=_customer_id)
+		OR NOT EXISTS(SELECT * FROM `택배업체` WHERE `id`=_parcel_id) THEN
 		LEAVE PROC_BODY;
 	END IF;
 	
-
 	START TRANSACTION;
 	INSERT INTO `주문`(`고객_id`, `택배업체_id`, `주소`, `우편번호`)
 		VALUES (_customer_id, _parcel_id, _home_address, _postal_code);
@@ -250,4 +251,73 @@ PROC_BODY: BEGIN
 	COMMIT;
 END $$
 
- 
+DELIMITER $$
+CREATE PROCEDURE `order_materials`(
+    IN _manufacturer_id INT,
+    IN _vendor_id INT,
+    IN _pay INT,
+    IN _materials JSON
+)
+PROC_BODY: BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE _id INT;
+	DECLARE _materials_keys TEXT;
+	DECLARE _material_key_i_varchar VARCHAR(11);
+	DECLARE _material_key_i INT;
+	DECLARE _material_quantity_i INT;
+	DECLARE price_temp INT;
+
+    IF NOT EXISTS(SELECT * FROM `제조공장` WHERE `id`=_manufacturer_id)
+		OR NOT EXISTS(SELECT * FROM `원자재거래처` WHERE `id`=_vendor_id) THEN
+		LEAVE PROC_BODY;
+	END IF;
+
+    START TRANSACTION;
+	INSERT INTO `구매로그`(`내용`, `제조공장_id`, `금액`)
+		VALUES ("Purchase Materials", _manufacturer_id, _pay);
+	
+	SET _id=LAST_INSERT_ID();
+
+	SET _materials_keys = JSON_UNQUOTE(JSON_KEYS(_materials));
+
+	WHILE i < JSON_LENGTH(_materials) DO
+		SET _material_key_i_varchar = JSON_UNQUOTE(JSON_EXTRACT(_materials_keys, CONCAT('$[', i, ']')));
+		SET _material_key_i = CAST(_material_key_i_varchar AS UNSIGNED);
+		SET _material_quantity_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_materials, _material_key_i)) AS SIGNED);
+		INSERT INTO `원자재구매`(`id`, `원자재거래처_id`,`원자재_id`, `구매량`) 
+			VALUES (_id, _vendor_id, _material_key_i, _material_quantity_i);
+
+		SET i = i+1;
+	END WHILE;
+	COMMIT;
+END $$
+
+DELIMITER $$
+CREATE PROCEDURE add_material_info(
+	IN _manufacturers TEXT,
+	IN _material_name VARCHAR(60),
+	IN _material_group TINYINT,
+	IN _material_origin VARCHAR(60)
+)
+PROC_BODY: BEGIN
+	DECLARE i INT DEFAULT 0;
+	DECLARE _manufacturer_id_i INT;
+	DECLARE _id INT;
+
+	START TRANSACTION;
+	INSERT INTO `원자재`(`구분`, `원산지`, `원자재명`)
+		VALUES (_material_group, _material_origin, _material_name);
+	SET _id = LAST_INSERT_ID();
+
+	WHILE i < JSON_LENGTH(_manufacturers) DO
+		SET _manufacturer_id_i = CAST(JSON_UNQUOTE(JSON_EXTRACT(_manufacturers, CONCAT('$[', i, ']'))) AS UNSIGNED);
+		IF NOT EXISTS (SELECT * FROM `제조공장` WHERE `id`=_manufacturer_id_i) THEN
+			ROLLBACK;
+		END IF;
+		
+		INSERT `원자재보관현황`(`id`, `제조공장_id`)
+			VALUES (_id, _manufacturer_id_i);
+		SET i=i+1;
+	END WHILE;
+	COMMIT;
+END $$
